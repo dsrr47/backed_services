@@ -86,9 +86,11 @@ def similarity_search(message: str, top_k: int=15):
     conn = get_db_conn(DB_PATH)
     cursor = conn.cursor()
 
+    # Create Query embedding
     query_vec = client.embeddings.create(model="text-embedding-ada-002", input=message).data[0].embedding
     query_bytes = serialize(query_vec)
 
+    # Execute Search
     results = cursor.execute(
         """
         SELECT
@@ -110,3 +112,13 @@ def similarity_search(message: str, top_k: int=15):
     conn.close()
     return results
 
+def do_sql_query(sql_query: str):
+    conn = get_db_conn(DB_PATH)
+    cursor = conn.cursor()
+
+    try:
+        rows = cursor.execute(sql_query).fetchall()
+        conn.close()
+        return rows
+    except Exception as e:
+        return {"error": str(e)}
