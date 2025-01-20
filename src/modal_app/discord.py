@@ -6,16 +6,17 @@ from typing import Dict
 from openai import OpenAI
 DISCORD_BASE_URL = "https://discord.com/api/v10"
 
-def fetch_and_store_channel_messages(channel_id: str, headers: Dict, limit: int=DEFAULT_LIMIT) -> None:
-    """FETCH up to limit messages from the given channel and store in SQLite"""
-
-    client = OpenAI(api_keys=os.environ["OPENAI_API_KEY"])
-    url = f"{DISCORD_BASE_URL}/channels/channel_id/messages?limit={limit}"
+def fetch_and_store_channel_messages(
+    channel_id: str, headers: Dict, limit: int = DEFAULT_LIMIT
+) -> None:
+    """Fetch up to limit messages from the given channel and store in SQLite."""
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    url = f"{DISCORD_BASE_URL}/channels/{channel_id}/messages?limit={limit}"
     resp = requests.get(url, headers=headers)
 
     # Handle permissions errors
     if resp.status_code == 403:
-        print(f"[403 Forbidden] Skipping channel {channel_id} - no permission.")
+        print(f"[403 Forbidden] Skipping channel {channel_id} — no permission.")
         return
 
     resp.raise_for_status()
@@ -29,21 +30,24 @@ def fetch_and_store_channel_messages(channel_id: str, headers: Dict, limit: int=
         message_id = msg["id"]
         author_id = msg["author"]["id"]
         content = msg["content"]
-        timestamp = msg["timestamp"]
-
+        timestamp = msg["timestamp"]  # e.g. '2025-01-01T00:00:00.000000+00:00'
         # Insert or ignore if row already exists
         cursor.execute(
-            """ INSERT OR IGNORE INTO discord_messages (id, channel_id, author_id, content, created_at)
-                VALUES (?, ?, ?, ?, ?)""",
-                (message_id, channel_id, author_id,content, timestamp)
+            """
+                INSERT OR IGNORE INTO discord_messages (id, channel_id, author_id, content, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+            (message_id, channel_id, author_id, content, timestamp),
         )
-
         # Generate embeddings for the message content
         embedding = (
-            client.embeddings.create(model="text-embedding-ada-002", input=content).data[0].embedding
+            client.embeddings.create(model="text-embedding-ada-002", input=content)
+            .data[0]
+            .embedding
         )
-
-        cursor.execute("SELECT id FROM vec_discord_messages WHERE id = ?", (message_id,))
+        cursor.execute(
+            "SELECT id FROM vec_discord_messages WHERE id = ?", (message_id,)
+        )
         row = cursor.fetchone()
 
         if row is None:
@@ -54,8 +58,8 @@ def fetch_and_store_channel_messages(channel_id: str, headers: Dict, limit: int=
                 VALUES (?, ?)
                 """,
                 (
-                  message_id,
-                  serialize(embedding)
+                    message_id,
+                    serialize(embedding),
                 ),
             )
         else:
@@ -64,13 +68,11 @@ def fetch_and_store_channel_messages(channel_id: str, headers: Dict, limit: int=
                 """
                 UPDATE vec_discord_messages
                 SET embedding = ?
-                Where id = ?
+                WHERE id = ?
                 """,
-                (
-                  serialize(embedding),
-                  message_id
-                ),
+                (serialize(embedding), message_id),
             )
+
     conn.commit()
     conn.close()
 
