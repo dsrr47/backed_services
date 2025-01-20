@@ -3,6 +3,9 @@ import sqlite3
 import sqlite_vec
 from modal import asgi_app
 from .common import DB_PATH, VOLUME_DIR, app, fastapi_app, volume
+from openai import OpenAI
+from .common import DB_PATH, VOLUME_DIR, app, fastapi_app, get_db_conn, serialize, volume, TOOLS
+import os
 
 @app.function(
     volumes={VOLUME_DIR: volume},
@@ -77,3 +80,33 @@ async def list_items():
 @fastapi_app.get("/")
 def read_root():
     return {"message": "Hello World"}
+
+def similarity_search(message: str, top_k: int=15):
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    conn = get_db_conn(DB_PATH)
+    cursor = conn.cursor()
+
+    query_vec = client.embeddings.create(model="text-embedding-ada-002", input=message).data[0].embedding
+    query_bytes = serialize(query_vec)
+
+    results = cursor.execute(
+        """
+        SELECT
+            vec_discord_messages.id,
+            distance,
+            discord_messages,channel_id,
+            discord_messages.author_id,
+            discord_messages.content,
+            discord_messages.create_at
+        FROM vec_discord_messages
+        LEFT JOIN discord_messages USING (id)
+        WHERE embedding MATCH ?
+            And k = ?
+        ORDER BY distance
+        """,
+        [query_bytes, top_k],
+    ).fetchall()
+
+    conn.close()
+    return results
+
