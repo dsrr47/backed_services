@@ -38,7 +38,7 @@ TOOLS = [
 DEFAULT_LIMIT = 50
 
 # DB CONSTANTS
-DB_FILENAME = "discordmsg.db"
+DB_FILENAME = "discord_messages.db"
 VOLUME_DIR = "/cache-vol"
 DB_PATH = pathlib.Path(VOLUME_DIR, DB_FILENAME)
 

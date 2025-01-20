@@ -31,16 +31,16 @@ def init_db():
             content TEXT NOT NULL,
             created_at TIMESTAMP NOT NULL
         )
-    """
+        """
     )
     cursor.execute(
-        """
-        CREATE VIRTUAL TABLE IF NOT EXISTS vec_discord_messages USING vec0(
-          id TEXT PRIMARY KEY,
-          embedding FLOAT[1536]
-        );
-        """
-    )
+          """
+          CREATE VIRTUAL TABLE IF NOT EXISTS vec_discord_messages USING vec0(
+              id TEXT PRIMARY KEY,
+              embedding FLOAT[1536]
+          );
+          """
+      )
     conn.commit()
     conn.close()
     volume.commit()
