@@ -1,5 +1,6 @@
 # src/modal_app/main.py
 import sqlite3
+import sqlite_vec
 from modal import asgi_app
 from .common import DB_PATH, VOLUME_DIR, app, fastapi_app, volume
 
@@ -10,16 +11,29 @@ def init_db():
     """Initialize the SQLite database with a simple table."""
     volume.reload()
     conn = sqlite3.connect(DB_PATH)
+    conn.enable_load_extension(True)
+    sqlite_vec.load(conn)
+    conn.enable_load_extension(False)
     cursor = conn.cursor()
     # Create a simple table
     cursor.execute(
         """
-        CREATE TABLE IF NOT EXISTS items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        CREATE TABLE IF NOT EXISTS discord_messages (
+            id TEXT PRIMARY KEY,
+            channel_id TEXT NOT NULL,
+            author_id TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL
         )
     """
+    )
+    cursor.execute(
+        """
+        CREATE VIRTUAL TABLE IF NOT EXISTS vec_discord_messages USING vec0(
+          id TEXT PRIMARY KEY,
+          embedding FLOAT[1536]
+        );
+        """
     )
     conn.commit()
     conn.close()
@@ -27,6 +41,7 @@ def init_db():
 
 @app.function(
     volumes={VOLUME_DIR: volume},
+    timeout=2000
 )
 @asgi_app()
 def fastapi_entrypoint():
