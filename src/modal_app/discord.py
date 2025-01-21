@@ -4,6 +4,8 @@ import os
 from .common import DB_PATH, DEFAULT_LIMIT, volume, get_db_conn, serialize
 from typing import Dict
 from openai import OpenAI
+
+
 DISCORD_BASE_URL = "https://discord.com/api/v10"
 
 def fetch_and_store_channel_messages(
@@ -76,6 +78,7 @@ def fetch_and_store_channel_messages(
     conn.commit()
     conn.close()
 
+
 def scrape_discord_server(guild_id: str, headers: Dict, limit: int = DEFAULT_LIMIT) -> None:
     """
     Fetch all channels from the given Discord server (guild),
@@ -83,13 +86,14 @@ def scrape_discord_server(guild_id: str, headers: Dict, limit: int = DEFAULT_LIM
     for each one, storing them in the database.
     """
     # 1) Get all channels
-    channels_url  = f"{DISCORD_BASE_URL}/guilds/{guild_id}/channels"
+    channels_url = f"{DISCORD_BASE_URL}/guilds/{guild_id}/channels"
     response = requests.get(channels_url, headers=headers)
     response.raise_for_status()
     channels = response.json()
+
     # 2) Iterate over channels and scrape if it's a text channel
     for channel in channels:
-        # Discord 'type=0' => GUILD_TEXT (ie text channel)
+        # Discord 'type=0' => GUILD_TEXT (i.e. text channel)
         if channel.get("type") == 0:
             channel_id = channel["id"]
             print(f"Scraping channel: {channel['name']} (ID: {channel_id})")
